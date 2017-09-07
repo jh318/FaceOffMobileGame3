@@ -1,0 +1,14 @@
+.DS_Store
+
+Assets/_*
+build/*
+builds/*
+capture/*
+Assembly-*
+Library/*
+Temp/*
+.vs/*
+
+*.sln
+*.userprefs
+*.csproj
