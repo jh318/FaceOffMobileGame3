@@ -10,6 +10,7 @@ public class PlayerController : MonoBehaviour {
 		public GameObject playerObjectTwo;
 		public Text winText;
 		public float parryWindow = 1.0f;
+		public float parryWindowJust = 2.0f;
 
 		Touch t;
 		bool touched = false;
@@ -18,6 +19,10 @@ public class PlayerController : MonoBehaviour {
 		bool parryTouchTwo = false;
 		bool parryTouchOnePrev = false;
 		bool parryTouchTwoPrev = false;
+		bool parryTouchOneSync = false;
+		bool parryTouchTwoSync = false;
+		float parryTouchOneTime = -1.0f;
+		float parryTouchTwoTime = -1.0f;
 
 		Color playerObjectOneColor;
 		Color playerObjectTwoColor;
@@ -25,6 +30,8 @@ public class PlayerController : MonoBehaviour {
 		Coroutine inputCheck;
 
 		void Start(){
+			parryTouchOneTime = -1.0f;
+			parryTouchTwoTime = -1.0f;
 			playerObjectOneColor = playerObjectOne.GetComponentInChildren<SpriteRenderer>().color;
 			playerObjectTwoColor = playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color;
 			winText.gameObject.SetActive(false);
@@ -57,6 +64,7 @@ public class PlayerController : MonoBehaviour {
 				playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color = Color.white;
 				parryTouchOne = true;
 				parryTouchOnePrev = true;
+				parryTouchOneTime = Time.time;
 				StartCoroutine("ParryTimer", playerObjectTwo);
 			}
 			else if(touchedObject.name == "Player2"){
@@ -65,6 +73,7 @@ public class PlayerController : MonoBehaviour {
 				playerObjectOne.GetComponentInChildren<SpriteRenderer>().color = Color.white;
 				parryTouchTwo = true;
 				parryTouchTwoPrev = true;
+				parryTouchTwoTime = Time.time;
 				StartCoroutine("ParryTimer", playerObjectOne);
 			}
 		}
@@ -81,13 +90,19 @@ public class PlayerController : MonoBehaviour {
 			if(parryTouchOnePrev == true){
 				Debug.Log("Player1 wins");
 				playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color = Color.black;
+				playerObjectTwo.gameObject.SetActive(false);
 				StartCoroutine("WinAndReset", playerObjectOne);
 			}
 				
 			else if(parryTouchTwoPrev == true){
 				Debug.Log("Player2 wins");
 				playerObjectOne.GetComponentInChildren<SpriteRenderer>().color = Color.black;
+				playerObjectOne.gameObject.SetActive(false);
 				StartCoroutine("WinAndReset", playerObjectTwo);
+			}
+			else{
+				StartCoroutine("WinAndReset", gameObject);
+				Debug.Log("Draw");
 			}
 		}
 
@@ -99,39 +114,59 @@ public class PlayerController : MonoBehaviour {
 				if(t.phase == TouchPhase.Began){
 					Ray r = Camera.main.ScreenPointToRay(t.position);
 					RaycastHit2D hit = Physics2D.GetRayIntersection(r);
+					
+					//Check for double input
 					if(hit.collider != null && hit.collider.gameObject.name == "Player1" && parryTouchOnePrev){
 						Debug.Log("Player1 Cheat");
 						hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = Color.black;
+						playerObjectOne.gameObject.SetActive(false);
+						parryTouchOnePrev = false;
 						parryTouchOne = false;
-						parryTouchTwo = true;
+						parryTouchTwo = false;
+						parryTouchTwoPrev = true; // Player two wins
 						yield break;
 					}
 					else if(hit.collider != null && hit.collider.gameObject.name == "Player2" && parryTouchTwoPrev){
 						Debug.Log("Player2 Cheat");
 						hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = Color.black;
-						parryTouchOne = true;
+						playerObjectTwo.gameObject.SetActive(false);
+						parryTouchTwoPrev = false;
+						parryTouchOne = false;
 						parryTouchTwo = false;
+						parryTouchOnePrev = true; // Player 1 wins
 						yield break;
 					}
-					if(!parryTouchOne && !parryTouchTwo){
+
+					//Player parried
+					else if(!parryTouchOne && !parryTouchTwo){
 						if(hit.collider != null && hit.collider.gameObject.name == "Player1"){
+							parryTouchOneTime = Time.time;
 							Debug.Log("Player 1 parry");
 							hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = playerObjectOneColor;
 							playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color = Color.white;
 							parryTouchOne = true;
 							parryTouchOnePrev = true; //Previous parry is player 1
 							parryTouchTwoPrev = false;
-							//StartCoroutine("ParryTimer", playerObjectTwo);
+
+							if(parryTouchOneTime - parryTouchTwoTime < parryWindowJust && parryTouchOneTime - parryTouchTwoTime >= 0.0f){
+								Debug.Log("JUST PARRY ONE");
+								parryTouchOne = false; //player 1 wins
+							}
 							yield break;
-					}
+						}
 						else if(hit.collider != null && hit.collider.gameObject.name == "Player2"){
+							parryTouchTwoTime = Time.time;
 							Debug.Log("Player 2 parry");
 							hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = playerObjectTwoColor;
 							playerObjectOne.GetComponentInChildren<SpriteRenderer>().color = Color.white;
 							parryTouchTwo = true;
-							parryTouchOnePrev = false;
 							parryTouchTwoPrev = true;
-							//StartCoroutine("ParryTimer", playerObjectOne);
+							parryTouchOnePrev = false;
+
+							if(parryTouchTwoTime - parryTouchOneTime < parryWindowJust && parryTouchTwoTime - parryTouchOneTime >= 0.0f){
+								Debug.Log("JUST PARRY TWO");
+								parryTouchTwo = false; //player 2 wins
+							}
 							yield break;
 						}
 					}	
@@ -148,6 +183,9 @@ public class PlayerController : MonoBehaviour {
 			}
 			else if(winObject.name == "Player2"){
 				winText.text = "Blue wins!";
+			}
+			else{
+				winText.text = "Draw!";
 			}
 			yield return new WaitForSeconds(3.0f);
 			SceneManager.LoadScene("GameScene");
