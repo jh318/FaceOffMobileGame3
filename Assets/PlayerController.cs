@@ -10,7 +10,8 @@ public class PlayerController : MonoBehaviour {
 		public GameObject playerObjectTwo;
 		public Text winText;
 		public float parryWindow = 1.0f;
-		public float parryWindowJust = 2.0f;
+		public float parryWindowJustLate = 0.1f;
+		public float parryWindowJustEarly = 0.1f;
 
 		Touch t;
 		bool touched = false;
@@ -23,6 +24,7 @@ public class PlayerController : MonoBehaviour {
 		bool parryTouchTwoSync = false;
 		float parryTouchOneTime = -1.0f;
 		float parryTouchTwoTime = -1.0f;
+		bool justParry = false;
 
 		Color playerObjectOneColor;
 		Color playerObjectTwoColor;
@@ -79,6 +81,7 @@ public class PlayerController : MonoBehaviour {
 		}
 
 		IEnumerator ParryTimer(GameObject otherObject){
+			//yield return StartCoroutine("JustParryCheck");
 			Debug.Log("Start Parry");
 			while(parryTouchOne || parryTouchTwo){
 				yield return new WaitForEndOfFrame();
@@ -114,9 +117,26 @@ public class PlayerController : MonoBehaviour {
 				if(t.phase == TouchPhase.Began){
 					Ray r = Camera.main.ScreenPointToRay(t.position);
 					RaycastHit2D hit = Physics2D.GetRayIntersection(r);
+				
+					//Set touch time
+					if(hit.collider != null && hit.collider.gameObject.name == "Player1"){
+						parryTouchOneTime = Time.time;
+						Debug.Log(parryTouchOneTime);
+						Debug.Log(parryTouchOneTime - parryTouchTwoTime);
+					}
+					else if(hit.collider != null && hit.collider.gameObject.name == "Player2"){
+						parryTouchTwoTime = Time.time;
+						Debug.Log(parryTouchTwoTime);
+						Debug.Log(parryTouchTwoTime - parryTouchOneTime);
+					}
 					
-					//Check for double input
+					//Check for early Just Parry or Double Input
 					if(hit.collider != null && hit.collider.gameObject.name == "Player1" && parryTouchOnePrev){
+						yield return StartCoroutine("JustParryCheck");
+						if(justParry){
+							yield break;
+						}
+
 						Debug.Log("Player1 Cheat");
 						hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = Color.black;
 						playerObjectOne.gameObject.SetActive(false);
@@ -127,6 +147,11 @@ public class PlayerController : MonoBehaviour {
 						yield break;
 					}
 					else if(hit.collider != null && hit.collider.gameObject.name == "Player2" && parryTouchTwoPrev){
+						yield return StartCoroutine("JustParryCheck");
+						if(justParry){
+							yield break;
+						}
+
 						Debug.Log("Player2 Cheat");
 						hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = Color.black;
 						playerObjectTwo.gameObject.SetActive(false);
@@ -138,20 +163,22 @@ public class PlayerController : MonoBehaviour {
 					}
 
 					//Player parried
-					else if(!parryTouchOne && !parryTouchTwo){
+					if(!parryTouchOne && !parryTouchTwo){
 						if(hit.collider != null && hit.collider.gameObject.name == "Player1"){
 							parryTouchOneTime = Time.time;
 							Debug.Log("Player 1 parry");
 							hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = playerObjectOneColor;
 							playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color = Color.white;
 							parryTouchOne = true;
-							parryTouchOnePrev = true; //Previous parry is player 1
+							parryTouchOnePrev = true; 
 							parryTouchTwoPrev = false;
 
-							if(parryTouchOneTime - parryTouchTwoTime < parryWindowJust && parryTouchOneTime - parryTouchTwoTime >= 0.0f){
-								Debug.Log("JUST PARRY ONE");
-								parryTouchOne = false; //player 1 wins
+							//Check late Just Parry
+							if(parryTouchOneTime - parryTouchTwoTime <= parryWindowJustLate){
+								PlayerOneJustParry();
+								yield break;
 							}
+							
 							yield break;
 						}
 						else if(hit.collider != null && hit.collider.gameObject.name == "Player2"){
@@ -163,10 +190,12 @@ public class PlayerController : MonoBehaviour {
 							parryTouchTwoPrev = true;
 							parryTouchOnePrev = false;
 
-							if(parryTouchTwoTime - parryTouchOneTime < parryWindowJust && parryTouchTwoTime - parryTouchOneTime >= 0.0f){
-								Debug.Log("JUST PARRY TWO");
-								parryTouchTwo = false; //player 2 wins
+							//Check late Just Parry
+							if(parryTouchTwoTime - parryTouchOneTime <= parryWindowJustLate){
+								PlayerTwoJustParry();
+								yield break;
 							}
+
 							yield break;
 						}
 					}	
@@ -175,6 +204,29 @@ public class PlayerController : MonoBehaviour {
 			yield return new WaitForEndOfFrame();
 			}
 		}
+
+		IEnumerator JustParryCheck(){
+			for(float time = 0.0f; time < parryWindowJustEarly; time += Time.deltaTime){
+				Debug.Log("check");
+				if(t.phase == TouchPhase.Began){
+					Ray r = Camera.main.ScreenPointToRay(t.position);
+					RaycastHit2D hit = Physics2D.GetRayIntersection(r);
+
+					if(hit.collider != null && hit.collider.gameObject.name == "Player2" && parryTouchOnePrev){
+						PlayerOneJustParry();
+						Debug.Log("Early One");
+						yield break;
+					}
+					else if(hit.collider != null && hit.collider.gameObject.name == "Player1" && parryTouchTwoPrev){
+						PlayerTwoJustParry();
+						Debug.Log("Early Two");
+						yield break;
+					}
+				}
+				yield return new WaitForEndOfFrame();
+			}
+		}
+		
 
 		IEnumerator WinAndReset(GameObject winObject){
 			winText.gameObject.SetActive(true);
@@ -189,5 +241,25 @@ public class PlayerController : MonoBehaviour {
 			}
 			yield return new WaitForSeconds(3.0f);
 			SceneManager.LoadScene("GameScene");
+		}
+
+		void PlayerOneJustParry(){
+			Debug.Log("JUST PARRY ONE!!!");
+			Debug.Log(parryTouchOneTime - parryTouchTwoTime);
+			justParry = true;
+			parryTouchOnePrev = true; //Previous parry is player 1
+			parryTouchTwoPrev = false;
+			parryTouchOne = false; //player 1 wins
+			parryTouchTwo = false;
+		}
+
+		void PlayerTwoJustParry(){
+			Debug.Log("JUST PARRY TWO!!!");
+			Debug.Log(parryTouchTwoTime - parryTouchOneTime);
+			justParry = true;
+			parryTouchOnePrev = false;
+			parryTouchTwoPrev = true;
+			parryTouchTwo = false; //player 2 wins
+			parryTouchOne = false;
 		}
 }
