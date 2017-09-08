@@ -81,12 +81,12 @@ public class PlayerController : MonoBehaviour {
 		}
 
 		IEnumerator ParryTimer(GameObject otherObject){
-			//yield return StartCoroutine("JustParryCheck");
+			yield return StartCoroutine("JustParryCheck");
 			Debug.Log("Start Parry");
 			while(parryTouchOne || parryTouchTwo){
 				yield return new WaitForEndOfFrame();
-				yield return new WaitForEndOfFrame();
-				yield return new WaitForEndOfFrame();
+				//yield return new WaitForEndOfFrame();
+				//yield return new WaitForEndOfFrame();
 				yield return StartCoroutine("ParryTouch", otherObject);
 			}
 
