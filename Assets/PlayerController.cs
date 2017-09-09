@@ -12,9 +12,10 @@ public class PlayerController : MonoBehaviour {
 		public float parryWindow = 1.0f;
 		public float parryWindowJustLate = 0.1f;
 		public float parryWindowJustEarly = 0.1f;
+		public KeyCode playerOneButton;
+		public KeyCode playerTwoButton;
 
 		Touch t;
-		bool touched = false;
 		bool firstTouch = false;
 		bool parryTouchOne = false;
 		bool parryTouchTwo = false;
@@ -25,6 +26,8 @@ public class PlayerController : MonoBehaviour {
 		float parryTouchOneTime = -1.0f;
 		float parryTouchTwoTime = -1.0f;
 		bool justParry = false;
+		bool playerOnePressed = false;
+		bool playerTwoPressed = false;
 
 		Color playerObjectOneColor;
 		Color playerObjectTwoColor;
@@ -32,21 +35,41 @@ public class PlayerController : MonoBehaviour {
 		Coroutine inputCheck;
 
 		void Start(){
-			parryTouchOneTime = -1.0f;
-			parryTouchTwoTime = -1.0f;
+			parryTouchOneTime = -1;
+			parryTouchTwoTime = -1;
 			playerObjectOneColor = playerObjectOne.GetComponentInChildren<SpriteRenderer>().color;
 			playerObjectTwoColor = playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color;
 			winText.gameObject.SetActive(false);
 		}
 
 		void Update(){
-			if(Input.touchCount == 0) return;
-			
-			t = Input.GetTouch(0);
-			UpdateTouch(t);
+			playerOnePressed = Input.GetKeyDown(playerOneButton);
+			playerTwoPressed = Input.GetKeyDown(playerTwoButton);
+			if(playerOnePressed) Debug.Log("P1 press");
+			if(playerTwoPressed) Debug.Log("P2 press");
+
+			if(Input.touchCount == 0 && !playerOnePressed && !playerTwoPressed) return;
+
+			if (Input.touchCount > 0) {
+				t = Input.GetTouch(0);
+				UpdateTouch(t);
+			}
+			else if (!firstTouch) {
+				UpdateButton();
+			}
+		}
+
+		void UpdateButton() {
+			if (playerOnePressed) {
+				CheckWhichPlayerTouched(playerObjectOne);
+			}
+			else if (playerTwoPressed) {
+				CheckWhichPlayerTouched(playerObjectTwo);
+			}
 		}
 
 		void UpdateTouch(Touch t){
+			
 			if(t.phase == TouchPhase.Began){
 				Ray r = Camera.main.ScreenPointToRay(t.position);
 				RaycastHit2D hit = Physics2D.GetRayIntersection(r);
@@ -54,22 +77,21 @@ public class PlayerController : MonoBehaviour {
 					if(!firstTouch){
 						CheckWhichPlayerTouched(hit.collider.gameObject);
 					}
-					touched = true;
 				}
 			}
 		}
 
 		void CheckWhichPlayerTouched(GameObject touchedObject){
-			if(touchedObject.name == "Player1"){
+			if(touchedObject.name == "Player1" || playerOnePressed){
 				firstTouch = true;
-				Debug.Log("Player1 Touch");
+				 Debug.Log("Player1 Touch");
 				playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color = Color.white;
 				parryTouchOne = true;
 				parryTouchOnePrev = true;
 				parryTouchOneTime = Time.time;
 				StartCoroutine("ParryTimer", playerObjectTwo);
 			}
-			else if(touchedObject.name == "Player2"){
+			else if(touchedObject.name == "Player2" || playerTwoPressed){
 				firstTouch = true;
 				Debug.Log("Player2 Touch");
 				playerObjectOne.GetComponentInChildren<SpriteRenderer>().color = Color.white;
@@ -81,31 +103,31 @@ public class PlayerController : MonoBehaviour {
 		}
 
 		IEnumerator ParryTimer(GameObject otherObject){
-			yield return StartCoroutine("JustParryCheck");
+			//yield return StartCoroutine("JustParryCheck");
 			Debug.Log("Start Parry");
 			while(parryTouchOne || parryTouchTwo){
 				yield return new WaitForEndOfFrame();
-				//yield return new WaitForEndOfFrame();
-				//yield return new WaitForEndOfFrame();
+				yield return new WaitForEndOfFrame();
+				yield return new WaitForEndOfFrame();
 				yield return StartCoroutine("ParryTouch", otherObject);
 			}
 
 			if(parryTouchOnePrev == true){
-				Debug.Log("Player1 wins");
+				 Debug.Log("Player1 wins");
 				playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color = Color.black;
 				playerObjectTwo.gameObject.SetActive(false);
 				StartCoroutine("WinAndReset", playerObjectOne);
 			}
 				
 			else if(parryTouchTwoPrev == true){
-				Debug.Log("Player2 wins");
+				 Debug.Log("Player2 wins");
 				playerObjectOne.GetComponentInChildren<SpriteRenderer>().color = Color.black;
 				playerObjectOne.gameObject.SetActive(false);
 				StartCoroutine("WinAndReset", playerObjectTwo);
 			}
 			else{
 				StartCoroutine("WinAndReset", gameObject);
-				Debug.Log("Draw");
+				 Debug.Log("Draw");
 			}
 		}
 
@@ -114,31 +136,34 @@ public class PlayerController : MonoBehaviour {
 			parryTouchTwo = false;
 
 			for(float time = 0.0f; time < parryWindow; time += Time.deltaTime){
-				if(t.phase == TouchPhase.Began){
+				if((t.phase == TouchPhase.Began && Input.touchCount > 0) || playerOnePressed || playerTwoPressed){
 					Ray r = Camera.main.ScreenPointToRay(t.position);
 					RaycastHit2D hit = Physics2D.GetRayIntersection(r);
+					
 				
 					//Set touch time
-					if(hit.collider != null && hit.collider.gameObject.name == "Player1"){
+					if((hit.collider != null && hit.collider.gameObject.name == "Player1") || playerOnePressed){
 						parryTouchOneTime = Time.time;
-						Debug.Log(parryTouchOneTime);
-						Debug.Log(parryTouchOneTime - parryTouchTwoTime);
+						Debug.Log("PRESSED BUTTON TIME ONE");
+						 Debug.Log(parryTouchOneTime);
+						 Debug.Log(parryTouchOneTime - parryTouchTwoTime);
 					}
-					else if(hit.collider != null && hit.collider.gameObject.name == "Player2"){
+					else if((hit.collider != null && hit.collider.gameObject.name == "Player2") || playerTwoPressed){
 						parryTouchTwoTime = Time.time;
-						Debug.Log(parryTouchTwoTime);
+						Debug.Log("PRESSED BUTTON TIME TWO");
+						 Debug.Log(parryTouchTwoTime);
 						Debug.Log(parryTouchTwoTime - parryTouchOneTime);
 					}
 					
 					//Check for early Just Parry or Double Input
-					if(hit.collider != null && hit.collider.gameObject.name == "Player1" && parryTouchOnePrev){
+					if(((hit.collider != null && hit.collider.gameObject.name == "Player1") || playerOnePressed) && parryTouchOnePrev){
 						yield return StartCoroutine("JustParryCheck");
 						if(justParry){
 							yield break;
 						}
 
 						Debug.Log("Player1 Cheat");
-						hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = Color.black;
+						playerObjectOne.GetComponentInChildren<SpriteRenderer>().color = Color.black;
 						playerObjectOne.gameObject.SetActive(false);
 						parryTouchOnePrev = false;
 						parryTouchOne = false;
@@ -146,14 +171,14 @@ public class PlayerController : MonoBehaviour {
 						parryTouchTwoPrev = true; // Player two wins
 						yield break;
 					}
-					else if(hit.collider != null && hit.collider.gameObject.name == "Player2" && parryTouchTwoPrev){
+					else if(((hit.collider != null && hit.collider.gameObject.name == "Player2") || playerTwoPressed) && parryTouchTwoPrev){
 						yield return StartCoroutine("JustParryCheck");
 						if(justParry){
 							yield break;
 						}
 
 						Debug.Log("Player2 Cheat");
-						hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = Color.black;
+						playerObjectTwo.gameObject.GetComponentInChildren<SpriteRenderer>().color = Color.black;
 						playerObjectTwo.gameObject.SetActive(false);
 						parryTouchTwoPrev = false;
 						parryTouchOne = false;
@@ -164,10 +189,10 @@ public class PlayerController : MonoBehaviour {
 
 					//Player parried
 					if(!parryTouchOne && !parryTouchTwo){
-						if(hit.collider != null && hit.collider.gameObject.name == "Player1"){
+						if((hit.collider != null && hit.collider.gameObject.name == "Player1") || playerOnePressed){
 							parryTouchOneTime = Time.time;
 							Debug.Log("Player 1 parry");
-							hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = playerObjectOneColor;
+							playerObjectOne.GetComponentInChildren<SpriteRenderer>().color = playerObjectOneColor;
 							playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color = Color.white;
 							parryTouchOne = true;
 							parryTouchOnePrev = true; 
@@ -181,10 +206,10 @@ public class PlayerController : MonoBehaviour {
 							
 							yield break;
 						}
-						else if(hit.collider != null && hit.collider.gameObject.name == "Player2"){
+						else if((hit.collider != null && hit.collider.gameObject.name == "Player2") || playerTwoPressed){
 							parryTouchTwoTime = Time.time;
 							Debug.Log("Player 2 parry");
-							hit.collider.gameObject.GetComponentInChildren<SpriteRenderer>().color = playerObjectTwoColor;
+							playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color = playerObjectTwoColor;
 							playerObjectOne.GetComponentInChildren<SpriteRenderer>().color = Color.white;
 							parryTouchTwo = true;
 							parryTouchTwoPrev = true;
@@ -207,17 +232,20 @@ public class PlayerController : MonoBehaviour {
 
 		IEnumerator JustParryCheck(){
 			for(float time = 0.0f; time < parryWindowJustEarly; time += Time.deltaTime){
-				Debug.Log("check");
-				if(t.phase == TouchPhase.Began){
+				//Debug.Log("check");
+				//playerOnePressed = Input.GetKeyDown(playerOneButton);
+				//playerTwoPressed = Input.GetKeyDown(playerTwoButton);
+				if((t.phase == TouchPhase.Began || playerOnePressed || playerTwoPressed)){
+					Debug.Log("JustCheck");
 					Ray r = Camera.main.ScreenPointToRay(t.position);
 					RaycastHit2D hit = Physics2D.GetRayIntersection(r);
 
-					if(hit.collider != null && hit.collider.gameObject.name == "Player2" && parryTouchOnePrev){
+					if(((hit.collider != null && hit.collider.gameObject.name == "Player2") || playerTwoPressed) && parryTouchOnePrev){
 						PlayerOneJustParry();
 						Debug.Log("Early One");
 						yield break;
 					}
-					else if(hit.collider != null && hit.collider.gameObject.name == "Player1" && parryTouchTwoPrev){
+					else if(((hit.collider != null && hit.collider.gameObject.name == "Player1") || playerOnePressed) && parryTouchTwoPrev){
 						PlayerTwoJustParry();
 						Debug.Log("Early Two");
 						yield break;
