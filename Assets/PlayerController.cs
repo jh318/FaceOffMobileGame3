@@ -14,6 +14,7 @@ public class PlayerController : MonoBehaviour {
 		public float parryWindowJustEarly = 0.1f;
 		public KeyCode playerOneButton;
 		public KeyCode playerTwoButton;
+		public KeyCode quitButton;
 
 		Touch t;
 		bool firstTouch = false;
@@ -28,6 +29,7 @@ public class PlayerController : MonoBehaviour {
 		bool justParry = false;
 		bool playerOnePressed = false;
 		bool playerTwoPressed = false;
+		bool quitPressed = false;
 
 		Color playerObjectOneColor;
 		Color playerObjectTwoColor;
@@ -40,11 +42,16 @@ public class PlayerController : MonoBehaviour {
 			playerObjectOneColor = playerObjectOne.GetComponentInChildren<SpriteRenderer>().color;
 			playerObjectTwoColor = playerObjectTwo.GetComponentInChildren<SpriteRenderer>().color;
 			winText.gameObject.SetActive(false);
+			Cursor.visible = false;
 		}
 
 		void Update(){
 			playerOnePressed = Input.GetKeyDown(playerOneButton);
 			playerTwoPressed = Input.GetKeyDown(playerTwoButton);
+			quitPressed = Input.GetKeyDown(quitButton);
+			if(quitPressed){
+				Application.Quit();
+			}
 			if(playerOnePressed) Debug.Log("P1 press");
 			if(playerTwoPressed) Debug.Log("P2 press");
 
